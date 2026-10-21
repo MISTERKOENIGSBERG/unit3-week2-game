@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mr. Koenigsberg's Class • Unit 3 Week 2 Master Game</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Nunito', 'Comic Neue', cursive; background: linear-gradient(135deg, #1e3a8a 0%, #111827 50%, #1e3a8a 100%); overflow: hidden; user-select: none; touch-action: manipulation; }
+        .emoji-anim { animation: floatUp 22s linear infinite; position: absolute; z-index: 0; opacity: 0.55; font-size: 4.2rem; pointer-events: none; filter: drop-shadow(0 6px 8px rgba(0,0,0,0.35)); }
+        @keyframes floatUp { 0% { transform: translateY(110vh) rotate(-15deg) scale(0.9); } 50% { transform: translateY(50vh) rotate(15deg) scale(1.1); } 100% { transform: translateY(-120px) rotate(-15deg) scale(0.9); } }
+        
+        .uncle-tony-graphic { display: inline-block; animation: bounce 0.8s infinite alternate; filter: drop-shadow(5px 10px 10px rgba(0,0,0,0.3)); }
+        @keyframes bounce { from { transform: translateY(0px); } to { transform: translateY(-15px); } }
+
+        .glass-panel { background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(12px); border: 5px solid #fff; box-shadow: 0 20px 45px rgba(0,0,0,0.45); z-index: 10; position: relative; }
+        .btn-answer { transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-bottom: 8px solid rgba(0,0,0,0.25); z-index: 30; position: relative;}
+        .btn-answer:active:not(:disabled) { transform: translateY(4px); border-bottom: 4px solid rgba(0,0,0,0.25); }
+        .btn-answer:disabled { filter: grayscale(85%); opacity: 0.55; cursor: not-allowed; transform: none; border-bottom: 8px solid rgba(0,0,0,0.2); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.82); z-index: 50; justify-content: center; align-items: center; backdrop-filter: blur(6px); }
+        .modal.active { display: flex; }
+        #timer-banner { transition: max-height 0.4s ease, opacity 0.4s ease, padding 0.4s ease, margin 0.4s ease; max-height: 0; opacity: 0; overflow: hidden; padding: 0; margin-bottom: 0; border-width: 0; }
+        #timer-banner.active { max-height: 280px; opacity: 1; padding: 1.25rem 1.75rem; margin-bottom: 1.25rem; border-width: 4px; z-index: 20; position: relative;}
+        .custom-scroll::-webkit-scrollbar { width: 12px; } .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; } .custom-scroll::-webkit-scrollbar-thumb { background: #64748b; border-radius: 10px; }
+        
+        .day-tab { transition: all 0.2s ease; border-bottom: 6px solid rgba(0,0,0,0.3); }
+        .day-tab.active-day { background-color: #fbbf24 !important; color: #78350f !important; border-bottom-color: #b45309 !important; transform: scale(1.05); }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center p-2 md:p-4 relative">
+
+    <div class="emoji-anim" style="left: 10%; animation-delay: 0s;">⚖️</div>
+    <div class="emoji-anim" style="left: 35%; animation-delay: 4s;">📜</div>
+    <div class="emoji-anim" style="left: 60%; animation-delay: 2s;">🏛️</div>
+    <div class="emoji-anim" style="left: 85%; animation-delay: 6s;">⭐</div>
+
+    <!-- 1. START SCREEN -->
+    <div id="start-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center glass-panel" style="background: rgba(30, 58, 138, 0.95);">
+        
+        <div class="uncle-tony-graphic mb-2">
+            <svg viewBox="0 0 200 250" width="140" height="170" xmlns="http://www.w3.org/2000/svg">
+                <rect x="75" y="180" width="15" height="45" fill="#333" />
+                <rect x="110" y="180" width="15" height="45" fill="#333" />
+                <ellipse cx="75" cy="225" rx="20" ry="12" fill="#111" />
+                <ellipse cx="125" cy="225" rx="20" ry="12" fill="#111" />
+                <path d="M 50 100 C 40 150, 50 200, 100 195 C 150 200, 160 150, 150 100 Z" fill="#fff" stroke="#ccc" stroke-width="3"/>
+                <path d="M 75 100 L 125 100 L 100 140 Z" fill="#d32f2f" />
+                <path d="M 60 110 C 30 120, 20 160, 30 180" fill="none" stroke="#fff" stroke-width="20" stroke-linecap="round"/>
+                <circle cx="30" cy="180" r="12" fill="#f4c2c2" /> 
+                <path d="M 140 110 C 170 100, 180 70, 160 45" fill="none" stroke="#fff" stroke-width="20" stroke-linecap="round"/>
+                <circle cx="155" cy="40" r="12" fill="#f4c2c2" />
+                <path d="M 155 40 Q 145 25 150 20 Q 155 35 155 40" fill="#f4c2c2" stroke="#d6a3a3" stroke-width="2"/>
+                <circle cx="100" cy="70" r="35" fill="#f4c2c2" />
+                <circle cx="85" cy="60" r="5" fill="#333" />
+                <circle cx="115" cy="60" r="5" fill="#333" />
+                <path d="M 65 75 Q 100 55 135 75 Q 115 95 100 85 Q 85 95 65 75 Z" fill="#ddd" stroke="#bbb" stroke-width="1"/>
+                <path d="M 60 40 C 40 10, 80 -10, 100 10 C 120 -10, 160 10, 140 40 Z" fill="#fff" stroke="#ccc" stroke-width="2"/>
+                <rect x="65" y="30" width="70" height="20" fill="#fff" />
+            </svg>
+        </div>
+
+        <div class="bg-yellow-400 text-red-900 px-6 py-2 rounded-full font-black text-xl mb-3 shadow-md border-4 border-yellow-500 uppercase tracking-wide">
+            Mr. Koenigsberg's 2nd Grade Champions • Unit 3 Week 2
+        </div>
+        <h1 class="text-3xl md:text-5xl font-black text-white text-center drop-shadow-xl mb-3 px-4 leading-tight">Our Government's Laws Master Review</h1>
+        <p class="text-xl text-blue-200 font-bold mb-6">Select a Day Below:</p>
+        
+        <div class="flex flex-wrap justify-center gap-3 mb-8">
+            <button onclick="setDayAndStart(1)" class="day-tab bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xl shadow-lg hover:bg-blue-500">Day 1</button>
+            <button onclick="setDayAndStart(2)" class="day-tab bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xl shadow-lg hover:bg-blue-500">Day 2</button>
+            <button onclick="setDayAndStart(3)" class="day-tab bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xl shadow-lg hover:bg-blue-500">Day 3</button>
+            <button onclick="setDayAndStart(4)" class="day-tab bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xl shadow-lg hover:bg-blue-500">Day 4</button>
+            <button onclick="setDayAndStart(5)" class="day-tab bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xl shadow-lg hover:bg-blue-500">Day 5</button>
+        </div>
+
+        <button onclick="startLesson(1)" class="bg-green-500 text-white px-10 py-5 rounded-3xl font-black text-3xl border-b-8 border-green-700 hover:bg-green-400 shadow-2xl transition-transform hover:scale-105 active:scale-95">
+            ▶️ ENTER MASTER LESSON
+        </button>
+    </div>
+
+    <!-- 2. MINI-LESSON SCREEN -->
+    <div id="lesson-ui" class="w-full max-w-6xl h-full flex flex-col hidden relative z-40">
+        <div class="glass-panel rounded-[2.5rem] w-full flex flex-col h-[90vh] mt-4 relative overflow-hidden">
+            <div class="bg-blue-900 text-white p-4 md:p-5 rounded-t-[2rem] flex flex-wrap justify-between items-center border-b-4 border-blue-950 shrink-0 gap-3">
+                <h2 id="lesson-header-title" class="text-2xl md:text-3xl font-black">🧠 Pre-Game Mini Lesson: Day 1</h2>
+                
+                <div class="flex gap-2">
+                    <button onclick="switchDayTab(1)" id="tab-btn-1" class="day-tab bg-blue-700 text-white px-3 py-1 rounded-xl font-bold text-sm">Day 1</button>
+                    <button onclick="switchDayTab(2)" id="tab-btn-2" class="day-tab bg-blue-700 text-white px-3 py-1 rounded-xl font-bold text-sm">Day 2</button>
+                    <button onclick="switchDayTab(3)" id="tab-btn-3" class="day-tab bg-blue-700 text-white px-3 py-1 rounded-xl font-bold text-sm">Day 3</button>
+                    <button onclick="switchDayTab(4)" id="tab-btn-4" class="day-tab bg-blue-700 text-white px-3 py-1 rounded-xl font-bold text-sm">Day 4</button>
+                    <button onclick="switchDayTab(5)" id="tab-btn-5" class="day-tab bg-blue-700 text-white px-3 py-1 rounded-xl font-bold text-sm">Day 5</button>
+                </div>
+
+                <button onclick="toggleMusic()" id="musicBtnLesson" class="bg-green-500 text-white px-5 py-1.5 rounded-xl font-black text-lg border-b-4 border-green-700 hover:bg-green-400">🎵 Music: ON</button>
+            </div>
+            
+            <div class="flex-grow p-6 flex flex-col md:flex-row gap-6 overflow-y-auto custom-scroll">
+                <div class="w-full md:w-1/2 flex flex-col gap-4">
+                    <div class="bg-indigo-50 border-4 border-indigo-300 rounded-2xl p-5 shadow-sm flex flex-col justify-between h-full">
+                        <div>
+                            <h3 id="lesson-topic-title" class="text-2xl font-black text-indigo-900 mb-2">🏛️ Background Knowledge</h3>
+                            <p id="lesson-topic-desc" class="text-lg font-bold text-gray-700 mb-4">Today we are reading "Our Government's Laws" and distinguishing between important and unimportant information[cite: 14].</p>
+                        </div>
+                        <a id="lesson-youtube-link" href="https://youtu.be/WSmgQAo7A6U" target="_blank" class="bg-red-600 hover:bg-red-500 text-white p-5 rounded-2xl font-black text-xl text-center shadow-lg border-b-8 border-red-800 flex items-center justify-center gap-3 transition-transform hover:scale-105">
+                            ▶️ Watch Today's YouTube Lesson Video
+                        </a>
+                    </div>
+                </div>
+
+                <div class="w-full md:w-1/2 flex flex-col gap-4">
+                    <div class="bg-yellow-50 border-4 border-yellow-400 rounded-2xl p-5 shadow-sm flex-grow flex flex-col items-center text-center justify-center">
+                        <h3 class="text-3xl font-black text-yellow-900 mb-3">📝 Number Your Paragraphs!</h3>
+                        <p class="text-xl font-bold text-gray-800 mb-4">A <strong>paragraph</strong> is a group of sentences about one idea. It always starts with an indent.</p>
+                        <p class="text-2xl font-black text-red-600 mb-6 bg-red-100 px-4 py-2 rounded-xl border-2 border-red-300">You should find exactly 11 paragraphs in our text!</p>
+                        
+                        <div class="bg-white border-4 border-yellow-500 rounded-2xl p-4 w-full max-w-xs mb-6 shadow-inner">
+                            <span class="block text-lg font-black text-yellow-800 uppercase mb-2">60-Second Countdown</span>
+                            <div class="text-6xl font-black text-yellow-600 tabular-nums" id="para-timer-display">60</div>
+                        </div>
+
+                        <div class="flex flex-col gap-3 w-full max-w-sm">
+                            <button onclick="startParaTimer()" id="startParaBtn" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-xl border-b-4 border-blue-800 hover:bg-blue-500 shadow-md active:translate-y-1">⏱️ Start Timer</button>
+                            <button onclick="skipParaTimer()" id="skipParaBtn" class="bg-purple-500 text-white px-6 py-2 rounded-xl font-bold text-lg border-b-4 border-purple-700 hover:bg-purple-400 shadow-md active:translate-y-1 hidden">⏩ We Are Ready!</button>
+                            <button onclick="startGameMode()" id="continueBtn" class="bg-gray-400 text-white px-6 py-3 rounded-xl font-black text-xl border-b-4 border-gray-600 cursor-not-allowed transition-all" disabled>🔒 Start Game</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. MAIN GAME INTERFACE -->
+    <div id="game-ui" class="w-full max-w-6xl h-full flex flex-col hidden relative z-40">
+        <div class="w-full flex flex-wrap justify-between items-center gap-3 mb-2 z-20 px-2 mt-1">
+            <div class="flex flex-wrap gap-3">
+                <button onclick="openStoryModal()" class="bg-blue-600 text-white px-5 py-2.5 rounded-2xl font-black text-lg md:text-xl border-b-4 border-blue-900 hover:bg-blue-500 shadow-lg flex items-center gap-2 transition-transform hover:scale-105">📖 Story Reference</button>
+                <button onclick="toggleModal('anchorModal')" class="bg-purple-600 text-white px-5 py-2.5 rounded-2xl font-black text-lg md:text-xl border-b-4 border-purple-900 hover:bg-purple-500 shadow-lg flex items-center gap-2 transition-transform hover:scale-105">📌 Anchor Charts</button>
+            </div>
+            
+            <div class="flex gap-1.5 bg-white/20 p-1.5 rounded-2xl border-2 border-white/40">
+                <button onclick="switchDayTab(1)" id="game-tab-btn-1" class="day-tab bg-blue-700 text-white px-3 py-1 rounded-xl font-bold text-sm">Day 1</button>
+                <button onclick="switchDayTab(2)" id="game-tab-btn-2" class="day-tab bg-blue-700 text-white px-3 py-1 rounded-xl font-bold text-sm">Day 2</button>
+                <button onclick="switchDayTab(3)" id="game-tab-btn-3" class="day-tab bg-blue-700 text-white px-3 py-1 rounded-xl font-bold text-sm">Day 3</button>
+                <button onclick="switchDayTab(4)" id="game-tab-btn-4" class="day-tab bg-blue-700 text-white px-3 py-1 rounded-xl font-bold text-sm">Day 4</button>
+                <button onclick="switchDayTab(5)" id="game-tab-btn-5" class="day-tab bg-blue-700 text-white px-3 py-1 rounded-xl font-bold text-sm">Day 5</button>
+            </div>
+
+            <button onclick="toggleMusic()" id="musicBtnGame" class="bg-green-500 text-white px-5 py-2.5 rounded-2xl font-black text-lg md:text-xl border-b-4 border-green-800 hover:bg-green-400 shadow-lg">🎵 Music: ON</button>
+        </div>
+
+        <div class="glass-panel rounded-[2.2rem] w-full flex flex-col h-[86vh] relative">
+            <div class="bg-gradient-to-r from-red-700 via-red-600 to-blue-800 text-white p-4 md:p-5 rounded-t-[1.9rem] flex flex-col md:flex-row justify-between items-center border-b-4 border-yellow-400 shrink-0 gap-2">
+                <div class="flex items-center gap-3">
+                    <span class="text-4xl">📜</span>
+                    <div>
+                        <div id="game-banner-day" class="bg-yellow-400 text-red-950 px-4 py-0.5 rounded-full font-black text-sm md:text-base inline-block uppercase tracking-wider shadow-sm">Mr. Koenigsberg's Class • Unit 3 Week 2 Day 1</div>
+                        <h1 id="game-banner-title" class="text-2xl md:text-3xl font-black drop-shadow-md mt-1">Our Government's Laws</h1>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-2xl border-2 border-white/40 text-center">
+                        <span class="text-xs uppercase font-bold block text-yellow-200">Stars Earned</span>
+                        <span id="score-display" class="text-2xl font-black text-yellow-300">⭐ 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-5 md:p-7 flex-grow flex flex-col justify-start overflow-y-auto relative custom-scroll">
+                <div class="flex flex-wrap justify-center items-center gap-3 mb-3">
+                    <span class="bg-blue-100 text-blue-900 px-5 py-1.5 rounded-full font-black text-lg md:text-xl border-2 border-blue-300 shadow-inner" id="q-counter">Question 1 of 21</span>
+                    <span class="bg-amber-100 text-amber-900 px-5 py-1.5 rounded-full font-black text-lg md:text-xl border-2 border-amber-400 shadow-sm" id="q-category">Loading...</span>
+                </div>
+                
+                <div id="question-container" class="text-center z-20 w-full max-w-4xl mx-auto">
+                    <h2 id="question-text" class="text-2xl md:text-4xl font-black text-gray-800 leading-snug mb-3">Loading question...</h2>
+                </div>
+
+                <div id="timer-banner" class="bg-yellow-100 border-4 border-red-500 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-md w-full max-w-4xl mx-auto z-20 relative mt-4">
+                    <div class="flex items-center gap-4">
+                        <span class="text-5xl animate-bounce">🛑</span>
+                        <div>
+                            <h3 class="text-xl md:text-2xl font-black text-red-700 uppercase tracking-wide">10-Second Quick Look! 📖</h3>
+                            <p class="text-lg md:text-xl font-bold text-gray-800">Open your book to <span id="target-para-num" class="bg-red-600 text-white px-3 py-1 rounded-xl font-black text-2xl shadow-sm">Paragraph X</span>!</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 shrink-0">
+                        <div class="bg-white border-4 border-red-600 rounded-2xl px-5 py-1.5 shadow-inner text-center">
+                            <span class="block text-xs font-black text-red-800 uppercase">Unlocks In...</span>
+                            <div class="text-4xl font-black text-red-600 tabular-nums" id="timer-display">10</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="answers-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mt-4 w-full max-w-5xl mx-auto z-20 relative"></div>
+            </div>
+
+            <div class="bg-slate-100 px-6 py-3 rounded-b-[1.9rem] flex justify-between items-center border-t-4 border-slate-300 shrink-0 h-20 z-20 relative">
+                <button onclick="prevQuestion()" id="prevBtn" class="bg-slate-500 text-white px-5 py-2.5 rounded-xl font-black text-lg border-b-4 border-slate-700 hover:bg-slate-400 shadow-md transition-transform active:scale-95 disabled:opacity-40">⬅️ Back</button>
+                <div class="text-gray-500 font-bold text-lg">Mr. Koenigsberg's 2nd Grade Champions</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HINT POPUP MODAL -->
+    <div id="hintModal" class="modal z-[60]">
+        <div class="bg-white w-11/12 max-w-2xl rounded-[2.5rem] flex flex-col items-center p-8 border-8 border-red-500 shadow-2xl text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-4 bg-red-500"></div>
+            <div class="text-6xl mb-4 mt-4">🤔</div>
+            <h2 class="text-4xl font-black text-red-600 mb-4 uppercase tracking-wide">Oops! Let's try again!</h2>
+            <div class="bg-red-50 w-full rounded-2xl p-6 mb-8 border-2 border-red-200">
+                <p id="hint-text" class="text-2xl font-bold text-gray-800 leading-snug"></p>
+            </div>
+            <button onclick="closeHint()" class="bg-blue-600 text-white px-10 py-4 rounded-2xl font-black text-2xl border-b-8 border-blue-800 hover:bg-blue-500 active:translate-y-2 transition-all shadow-lg flex items-center gap-3">
+                🔄 Try Again
+            </button>
+        </div>
+    </div>
+
+    <!-- STORY REFERENCE MODAL -->
+    <div id="storyModal" class="modal z-[55]">
+        <div class="bg-white w-11/12 max-w-5xl h-5/6 rounded-[2rem] flex flex-col overflow-hidden relative border-8 border-blue-600 shadow-2xl">
+            <div class="bg-blue-600 text-white p-5 flex justify-between items-center border-b-4 border-blue-800 shrink-0">
+                <h2 class="text-2xl md:text-3xl font-black">📖 "Our Government's Laws" (pp. 12–16)</h2>
+                <button onclick="toggleModal('storyModal')" class="bg-red-500 text-white px-5 py-2 rounded-xl font-black text-xl hover:bg-red-400 border-b-4 border-red-700">✖ Close</button>
+            </div>
+            <div class="p-6 md:p-8 overflow-y-auto text-xl md:text-2xl leading-relaxed font-bold text-gray-800 space-y-5 custom-scroll">
+                <div id="story-para-1" class="p-4 bg-blue-50 rounded-xl border-2 border-blue-200"><span class="bg-blue-600 text-white px-3 py-1 rounded-lg mr-2 font-black inline-block mb-1">Paragraph 1</span>Every country has a government. A government is a group of people. This group of people works together to make important decisions for the country.</div>
+                <div id="story-para-2" class="p-4 bg-green-50 rounded-xl border-2 border-green-200"><span class="bg-green-600 text-white px-3 py-1 rounded-lg mr-2 font-black inline-block mb-1">Paragraph 2</span>In the United States, the government for the country is called the federal government. It runs national programs. Each state has its own government, too. Cities and towns also have their own local governments.</div>
+                <div id="story-para-3" class="p-4 bg-amber-50 rounded-xl border-2 border-amber-200"><span class="bg-amber-500 text-white px-3 py-1 rounded-lg mr-2 font-black inline-block mb-1">Paragraph 3</span>All governments make laws. A law is a rule that everyone has to follow. A government makes laws to keep citizens safe.</div>
+                <div id="story-para-4" class="p-4 bg-purple-50 rounded-xl border-2 border-purple-200"><span class="bg-purple-600 text-white px-3 py-1 rounded-lg mr-2 font-black inline-block mb-1">Paragraph 4</span>For example, every child in a car must wear a seat belt. That is the law. In most states, adults must wear seat belts too. Anyone who does not is breaking the law.</div>
+                <div id="story-para-5" class="p-4 bg-pink-50 rounded-xl border-2 border-pink-200"><span class="bg-pink-600 text-white px-3 py-1 rounded-lg mr-2 font-black inline-block mb-1">Paragraph 5</span>Laws help the government keep order. Laws tell people what they can and cannot do. For example, there are laws about how fast a car can go. The speed limit on many highways is sixty-five miles per hour. There are also laws about which streets cars can drive down.</div>
+                <div id="story-para-6" class="p-4 bg-teal-50 rounded-xl border-2 border-teal-200"><span class="bg-teal-600 text-white px-3 py-1 rounded-lg mr-2 font-black inline-block mb-1">Paragraph 6</span>Police officers work for the government. Some work for the local government. Others work for the state or federal government. They work to make sure people follow the laws.</div>
+                <div id="story-para-7" class="p-4 bg-indigo-50 rounded-xl border-2 border-indigo-200"><span class="bg-indigo-600 text-white px-3 py-1 rounded-lg mr-2 font-black inline-block mb-1">Paragraph 7</span>Many things can happen when a law gets broken. Here is an example. When a school bus has stopped to let students get on or off, cars are not allowed to pass a school bus that has stopped for students.</div>
+                <div id="story-para-8" class="p-4 bg-rose-50 rounded-xl border-2 border-rose-200"><span class="bg-rose-600 text-white px-3 py-1 rounded-lg mr-2 font-black inline-block mb-1">Paragraph 8</span>But one day, a man drives past a school bus that has stopped for students. A police officer sees this. He makes the driver stop. The officer writes a ticket. The ticket says which law the driver broke, and it lists a fine the driver may have to pay.</div>
+                <div id="story-para-9" class="p-4 bg-blue-50 rounded-xl border-2 border-blue-200"><span class="bg-blue-600 text-white px-3 py-1 rounded-lg mr-2 font-black inline-block mb-1">Paragraph 9</span>Sometimes, a person must go to court. In a courtroom, a judge is in charge. The judge knows all about laws. A jury is a group of people. They are chosen to listen to court cases. Many juries have twelve people. A judge and jury listen to see if the person broke the law.</div>
+                <div id="story-para-10" class="p-4 bg-green-50 rounded-xl border-2 border-green-200"><span class="bg-green-600 text-white px-3 py-1 rounded-lg mr-2 font-black inline-block mb-1">Paragraph 10</span>In court, a person tells his or her side of the story. Then, the jury decides if the person broke the law. Next, the judge decides what happens to the person.</div>
+                <div id="story-para-11" class="p-4 bg-amber-50 rounded-xl border-2 border-amber-200"><span class="bg-amber-500 text-white px-3 py-1 rounded-lg mr-2 font-black inline-block mb-1">Paragraph 11</span>There are federal, state, and local governments. They all pass laws. The laws help keep people safe. The laws help keep order. Police officers help keep order too.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ANCHOR CHART MODAL -->
+    <div id="anchorModal" class="modal z-[55]">
+        <div class="bg-white w-11/12 max-w-5xl h-5/6 rounded-[2rem] flex flex-col overflow-hidden relative border-8 border-purple-600 shadow-2xl">
+            <div class="bg-purple-600 text-white p-5 flex justify-between items-center border-b-4 border-purple-800 shrink-0">
+                <h2 id="anchor-modal-title" class="text-2xl md:text-3xl font-black">📌 Day 1 Anchor Charts</h2>
+                <button onclick="toggleModal('anchorModal')" class="bg-red-500 text-white px-5 py-2 rounded-xl font-black text-xl hover:bg-red-400 border-b-4 border-purple-900">✖ Close</button>
+            </div>
+            <div id="anchor-modal-content" class="p-6 md:p-8 overflow-y-auto text-lg md:text-xl font-bold text-gray-800 grid grid-cols-1 md:grid-cols-2 gap-6 custom-scroll"></div>
+        </div>
+    </div>
+
+    <script>
+        const lessonData = {
+            1: {
+                dayName: "Day 1",
+                title: "Distinguish Important vs. Unimportant Information",
+                topicDesc: "Today we are reading 'Our Government's Laws' and distinguishing between important details and unimportant facts[cite: 14].",
+                badgeTitle: "Mr. Koenigsberg's Class • Unit 3 Week 2 Day 1",
+                youtubeUrl: "https://youtu.be/WSmgQAo7A6U", // Day 1 Link Provided by User
+                anchorTitle: "📌 Day 1 Anchor Charts: Text Importance (ELA.2.R.2.2)[cite: 19]",
+                anchorHtml: `
+                    <div class="bg-amber-50 border-4 border-amber-400 rounded-2xl p-5 shadow-md">
+                        <h3 class="text-2xl font-black text-amber-900 mb-3">⭐ Important vs. Unimportant Details[cite: 19]</h3>
+                        <div class="bg-white p-3 rounded-xl border-2 border-amber-300 mb-3 text-center font-black text-amber-800 text-base">
+                            Topic ➡️ Section Focus ➡️ Essential Details[cite: 19]
+                        </div>
+                        <ul class="space-y-2 text-base text-gray-800 bg-white p-4 rounded-xl border-2 border-amber-200">
+                            <li>✅ <strong>Important:</strong> Helps answer why laws exist or how order is kept[cite: 19].</li>
+                            <li>❌ <strong>Unimportant (U):</strong> Interesting facts (like exact speed limits) that aren't essential[cite: 19].</li>
+                        </ul>
+                    </div>
+                    <div class="bg-blue-50 border-4 border-blue-400 rounded-2xl p-5 shadow-md">
+                        <h3 class="text-2xl font-black text-blue-900 mb-3">🗣️ Student Discourse[cite: 19]</h3>
+                        <p class="text-base text-gray-700 mb-3">How to explain text importance[cite: 19]:</p>
+                        <p class="bg-white p-4 rounded-xl border-2 border-blue-200 text-blue-900 text-base">
+                            <em>"The detail '___' is important/unimportant because it tells us ___, which helps us understand how laws keep us safe."[cite: 19]</em>
+                        </p>
+                    </div>
+                `,
+                questions: [
+                    { category: "Determining Importance (ELA.2.R.2.2)", q: "What is a government, according to Paragraph 1?", emoji: "🏛️", options: ["A group of people who work together to make important decisions", "A group of people who play games all day", "A single king who rules a castle", "A club for building school buses"], correct: 0, para: 1, hint: "Look at Paragraph 1! It defines what a government is." },
+                    { category: "Determining Importance (ELA.2.R.2.2)", q: "In the United States, what is the government for the country called?", emoji: "🇺🇸", options: ["The federal government", "The local neighborhood club", "The town party planner", "The state police squad"], correct: 0, para: 2, hint: "Check Paragraph 2 to find the name of our country's government." },
+                    { category: "Determining Importance (ELA.2.R.2.2)", q: "What is an important detail about why governments make laws in Paragraph 3?", emoji: "📜", options: ["Governments make laws to keep citizens safe.", "Governments make laws to choose what shoes we wear.", "Governments make laws so people can run fast.", "Governments make laws to decorate buildings."], correct: 0, para: 3, hint: "Look at Paragraph 3. Why does a government make laws?" },
+                    { category: "Determining Importance (ELA.2.R.2.2)", q: "In Paragraph 4, what is an important example of a law?", emoji: "🚗", options: ["Every child in a car must wear a seat belt.", "Every child must eat ice cream on Tuesdays.", "Every child must wear red shirts.", "Every child must sleep until noon."], correct: 0, para: 4, hint: "Check Paragraph 4 for the rule about riding in cars." },
+                    { category: "Important vs Unimportant (ELA.2.R.2.2)", q: "In Paragraph 5, the text says the speed limit on many highways is 65 miles per hour. Is this detail important or unimportant for understanding the main idea?", emoji: "⚡", options: ["Unimportant; it's a specific fact, but the main focus is that laws keep order.", "Important; knowing the exact speed is the only thing that matters.", "Important; it tells us how fast race cars go.", "Unimportant because cars don't have speed limits."], correct: 0, para: 5, hint: "Review the model from class: exact numbers are often extra facts rather than the main focus!" },
+                    { category: "Determining Importance (ELA.2.R.2.2)", q: "What is the main job of police officers mentioned in Paragraph 6?", emoji: "👮", options: ["To make sure people follow the laws", "To build new roads", "To cook school lunches", "To paint highway signs"], correct: 0, para: 6, hint: "Look at Paragraph 6. What do police officers work to make sure of?" },
+                    { category: "Build Knowledge Vocabulary (ELA.2.V.1.1)", q: "What does it mean if something is 'allowed'?", emoji: "🟢", options: ["Permission has been given for it.", "It is strictly forbidden and illegal.", "It is raining outside.", "It is time for bed."], correct: 0, para: null, hint: "Remember our vocabulary routine: allowed means permission was given!" },
+                    { category: "Build Knowledge Vocabulary (ELA.2.V.1.1)", q: "What are 'programs' in government?", emoji: "📋", options: ["Plans to help people reach a goal", "Television cartoon shows", "Musical instruments", "Typewriter machines"], correct: 0, para: null, hint: "Check our glossary: programs help people reach a goal." },
+                    { category: "Build Knowledge Vocabulary (ELA.2.V.1.1)", q: "If something is 'local', where is it located?", emoji: "📍", options: ["Close to where you live", "On the moon", "In a faraway galaxy", "Underground in a cave"], correct: 0, para: null, hint: "Local means near your community!" },
+                    { category: "Build Knowledge Vocabulary (ELA.2.V.1.1)", q: "What is a 'ticket' given by a police officer?", emoji: "🎫", options: ["A warning or fine for breaking a law", "A ticket to a movie theater", "A golden raffle ticket", "An airplane boarding pass"], correct: 0, para: null, hint: "Police give tickets when laws are broken." },
+                    { category: "Grammar Review (ELA.2.C.3.1)", q: "Which word is a noun in Paragraph 1?", emoji: "🔤", options: ["Government", "Quickly", "Bright", "Run"], correct: 0, para: 1, hint: "A noun names a person, place, or thing." },
+                    { category: "Grammar Review (ELA.2.C.3.1)", q: "What tense is the verb in 'A government makes laws'?", emoji: "⏳", options: ["Present tense", "Past tense", "Future tense", "Not a verb"], correct: 0, para: 3, hint: "It happens right now!" },
+                    { category: "Text Importance Check", q: "Why do readers separate important information from unimportant information?", emoji: "🧠", options: ["To understand the author's main message without getting lost in small details", "To make the book heavier", "To finish reading in 5 seconds", "To find pictures to color"], correct: 0, para: null, hint: "Focus helps us grasp the big picture." },
+                    { category: "Comprehension Check", q: "According to Paragraph 2, who runs national programs in the United States?", emoji: "🇺🇸", options: ["The federal government", "The local library", "The neighborhood playground", "The school principal"], correct: 0, para: 2, hint: "Check Paragraph 2 for federal government." },
+                    { category: "Comprehension Check", q: "According to Paragraph 2, do cities and towns have governments?", emoji: "🏙️", options: ["Yes, cities and towns also have their own local governments", "No, only the president makes local rules", "Only states have buildings", "No one runs towns"], correct: 0, para: 2, hint: "Paragraph 2 states cities and towns have local governments." },
+                    { category: "Comprehension Check", q: "What is a law defined as in Paragraph 3?", emoji: "📜", options: ["A rule that everyone has to follow", "A suggestion you can ignore", "A game played at recess", "A bedtime story"], correct: 0, para: 3, hint: "A law is mandatory for everyone." },
+                    { category: "Comprehension Check", q: "Who must follow laws in our country?", emoji: "👥", options: ["Everyone", "Only adults", "Only children", "No one"], correct: 0, para: 3, hint: "Everyone must follow laws to stay safe." },
+                    { category: "Comprehension Check", q: "What happens if someone does not wear a seat belt in a car?", emoji: "🚗", options: ["They are breaking the law", "They get a gold star", "The car goes faster", "Nothing happens"], correct: 0, para: 4, hint: "Check Paragraph 4." },
+                    { category: "Comprehension Check", q: "What do laws help the government keep?", emoji: "⚖️", options: ["Order", "Secrets", "Toys", "Candy"], correct: 0, para: 5, hint: "Paragraph 5: Laws help keep order." },
+                    { category: "Comprehension Check", q: "Where do some police officers work?", emoji: "🚓", options: ["Local, state, or federal government", "At a candy factory", "On a spaceship", "Inside a volcano"], correct: 0, para: 6, hint: "Check Paragraph 6." },
+                    { category: "Review & Reflect", q: "Which detail is most essential to understanding why we have a government?", emoji: "🏛️", options: ["Governments make decisions and laws to keep citizens safe", "Governments buy red crayons", "Governments build tall fences", "Governments eat lunch at noon"], correct: 0, para: 1, hint: "Safety and decisions are key!" }
+                ]
+            },
+            2: {
+                dayName: "Day 2",
+                title: "Identify Author's Purpose",
+                topicDesc: "Today we are analyzing why the author wrote 'Our Government's Laws' and identifying text features like headings and subheadings (ELA.2.R.2.3).",
+                badgeTitle: "Mr. Koenigsberg's Class • Unit 3 Week 2 Day 2",
+                youtubeUrl: "https://youtu.be/enm4afX-izA", // Day 2 Link Provided by User
+                anchorTitle: "📌 Day 2 Anchor Charts: Author's Purpose (ELA.2.R.2.3)",
+                anchorHtml: `
+                    <div class="bg-amber-50 border-4 border-amber-400 rounded-2xl p-5 shadow-md">
+                        <h3 class="text-2xl font-black text-amber-900 mb-3">🎯 Author's Purpose</h3>
+                        <div class="bg-white p-3 rounded-xl border-2 border-amber-300 mb-3 text-center font-black text-amber-800 text-base">
+                            Text Features ➡️ Details ➡️ Inform / Persuade / Entertain
+                        </div>
+                        <p class="text-base text-gray-700">The author's purpose is to <strong>inform</strong> readers about why governments create laws and how those laws keep citizens safe.</p>
+                    </div>
+                    <div class="bg-blue-50 border-4 border-blue-400 rounded-2xl p-5 shadow-md">
+                        <h3 class="text-2xl font-black text-blue-900 mb-3">🗣️ Student Discourse</h3>
+                        <p class="bg-white p-4 rounded-xl border-2 border-blue-200 text-blue-900 text-base">
+                            <em>"The author's purpose for including this information is to show us how ___."</em>
+                        </p>
+                    </div>
+                `,
+                questions: [
+                    { category: "Author's Purpose (ELA.2.R.2.3)", q: "What is the main topic of our text 'Our Government's Laws'?", emoji: "📚", options: ["Governments and laws", "Baking banana bread", "Growing banana trees in Florida", "How to fly airplanes"], correct: 0, para: null, hint: "Look at the title of the book!" },
+                    { category: "Author's Purpose (ELA.2.R.2.3)", q: "Why did the author write this informational text?", emoji: "🎯", options: ["To inform readers about why governments create laws and keep order", "To tell a funny made-up story about a dragon", "To persuade readers to buy a new car", "To teach us how to bake cookies"], correct: 0, para: null, hint: "Informational texts give us facts to inform us about a real topic." },
+                    { category: "Text Features (ELA.2.R.2.3)", q: "How do subheadings (like 'Why Does the Government Make Laws?') help the reader?", emoji: "📌", options: ["They tell us what each section will be about", "They show us where to draw pictures", "They tell us who illustrated the cover", "They tell us what song to sing"], correct: 0, para: 3, hint: "Subheadings guide us into the main focus of each part." },
+                    { category: "Author's Purpose (ELA.2.R.2.3)", q: "Why did the author include Paragraph 3 in the text?", emoji: "💡", options: ["To explain that governments make laws to keep citizens safe", "To show how fast cars drive", "To describe courtroom judges", "To list grocery items"], correct: 0, para: 3, hint: "Look at Paragraph 3: 'A government makes laws to keep citizens safe.'" },
+                    { category: "Author's Purpose (ELA.2.R.2.3)", q: "Why does the author discuss police officers in Paragraph 6?", emoji: "👮", options: ["To show how they help the government keep order by making sure people follow laws", "To show how they bake bread", "To describe how they fly planes", "To show how they grow banana trees"], correct: 0, para: 6, hint: "Police officers make sure people follow the rules!" },
+                    { category: "Author's Purpose (ELA.2.R.2.3)", q: "What type of text is 'Our Government's Laws'?", emoji: "📖", options: ["Informational text", "Fairy tale", "Poetry", "Comic book"], correct: 0, para: null, hint: "It gives true facts about our government." },
+                    { category: "Author's Purpose (ELA.2.R.2.3)", q: "How do we know the author's purpose is to inform?", emoji: "🔍", options: ["The text provides factual details, headings, and explanations about laws", "It has talking animals", "It tells jokes on every page", "It teaches a magic spell"], correct: 0, para: null, hint: "Facts and headings tell us it's informational." },
+                    { category: "Comprehension Check", q: "Why does the author include the example of the seat belt in Paragraph 4?", emoji: "💺", options: ["To give a clear example of a law that keeps people safe", "To talk about car colors", "To explain how tires are made", "To discuss highway speed limits"], correct: 0, para: 4, hint: "Seat belts show how safety laws work." },
+                    { category: "Comprehension Check", q: "What do laws tell people?", emoji: "📜", options: ["What they can and cannot do", "What to eat for breakfast", "What movie to watch", "What game to play"], correct: 0, para: 5, hint: "Paragraph 5." },
+                    { category: "Comprehension Check", q: "Why does the author mention federal, state, and local governments in Paragraph 2?", emoji: "🇺🇸", options: ["To show that different levels of government run programs and make laws", "To list vacation spots", "To name sports teams", "To show how to plant flowers"], correct: 0, para: 2, hint: "Different levels handle different programs." },
+                    { category: "Grammar: Action Verbs", q: "Identify the action verb in: 'Police officers work for the government.'", emoji: "🏃", options: ["Work", "Police", "Officers", "Government"], correct: 0, para: 6, hint: "What action are they doing?" },
+                    { category: "Grammar Review", q: "Which word is a past-tense verb?", emoji: "⏳", options: ["Worked", "Work", "Working", "Works"], correct: 0, para: null, hint: "Past tense often ends in -ed." },
+                    { category: "Author's Purpose Check", q: "If an author writes to 'inform', what are they giving you?", emoji: "🧠", options: ["Facts and true information", "A bedtime lullaby", "A magic potion", "A fictional mystery"], correct: 0, para: null, hint: "Inform = give information." },
+                    { category: "Text Features", q: "Where can you usually find the title of an informational text?", emoji: "📌", options: ["At the very beginning or on the cover", "On the back inside flap only", "Inside the glossary", "In the index"], correct: 0, para: null, hint: "Titles sit proudly at the top." },
+                    { category: "Comprehension Check", q: "Does the author think laws are important?", emoji: "⭐", options: ["Yes, because they keep citizens safe and maintain order", "No, laws do nothing", "Only on weekends", "Only during the summer"], correct: 0, para: 3, hint: "Safety and order are major themes." },
+                    { category: "Comprehension Check", q: "What do laws help the government keep?", emoji: "⚖️", options: ["Order", "Secrets", "Toys", "Candy"], correct: 0, para: 5, hint: "Paragraph 5: Laws help keep order." },
+                    { category: "Vocabulary in Context", q: "In Paragraph 3, what is a 'rule that everyone has to follow'?", emoji: "📏", options: ["A law", "A game", "A song", "A riddle"], correct: 0, para: 3, hint: "Definition from Paragraph 3." },
+                    { category: "Vocabulary in Context", q: "What does 'federal' refer to in Paragraph 2?", emoji: "🇺🇸", options: ["The government for the whole country", "A local park", "A school playground", "A neighborhood store"], correct: 0, para: 2, hint: "Federal = national country level." },
+                    { category: "Review & Reflect", q: "Why is understanding the author's purpose helpful when reading?", emoji: "💡", options: ["It helps us know what to expect and why we are reading the text", "It tells us how many pages are left", "It helps us spell our name", "It helps us tie our shoes"], correct: 0, para: null, hint: "Purpose guides our comprehension." },
+                    { category: "Review & Reflect", q: "Can an author have more than one purpose?", emoji: "✨", options: ["Yes, but in informational text, informing is primary", "No, never", "Only in poetry", "Only in math"], correct: 0, para: null, hint: "Informational texts focus heavily on facts." },
+                    { category: "Final Check", q: "What is the main takeaway from 'Our Government's Laws'?", emoji: "🏛️", options: ["Laws protect us and keep our communities orderly and safe", "Cars drive very fast", "Everyone loves school buses", "Courthouses are painted red"], correct: 0, para: null, hint: "Safety and order!" }
+                ]
+            },
+            3: {
+                dayName: "Day 3",
+                title: "Identify Central Idea & Relevant Details",
+                topicDesc: "Today we analyze how specific paragraphs support the central idea of the text (ELA.2.R.2.2).",
+                badgeTitle: "Mr. Koenigsberg's Class • Unit 3 Week 2 Day 3",
+                youtubeUrl: "https://youtu.be/MVuhgCcVNxs", // Day 3 Link Provided by User
+                anchorTitle: "📌 Day 3 Anchor Charts: Central Idea (ELA.2.R.2.2)[cite: 22]",
+                anchorHtml: `
+                    <div class="bg-amber-50 border-4 border-amber-400 rounded-2xl p-5 shadow-md">
+                        <h3 class="text-2xl font-black text-amber-900 mb-3">🧠 Central Idea & Details[cite: 22]</h3>
+                        <div class="bg-white p-3 rounded-xl border-2 border-amber-300 mb-3 text-center font-black text-amber-800 text-base">
+                            Paragraph Focus ➡️ Section Focus ➡️ Central Idea[cite: 22]
+                        </div>
+                        <p class="text-base text-gray-700">Paragraphs use specific examples (like seat belts) to support the big central idea: Government makes laws to keep people safe and maintain order[cite: 22].</p>
+                    </div>
+                    <div class="bg-blue-50 border-4 border-blue-400 rounded-2xl p-5 shadow-md">
+                        <h3 class="text-2xl font-black text-blue-900 mb-3">🗣️ Student Discourse[cite: 22]</h3>
+                        <p class="bg-white p-4 rounded-xl border-2 border-blue-200 text-blue-900 text-base">
+                            <em>"Paragraph 4 supports the section because it gives an example of a law that keeps people safe."[cite: 22]</em>
+                        </p>
+                    </div>
+                `,
+                questions: [
+                    { category: "Central Idea (ELA.2.R.2.2)", q: "What is the central idea of the entire text 'Our Government's Laws'?", emoji: "🧠", options: ["Our government creates and enforces laws to keep citizens safe and maintain order", "Only cars have laws", "Courthouses are very tall buildings", "Police officers never rest"], correct: 0, para: null, hint: "Think about the overarching message of our reading." },
+                    { category: "Relevant Details (ELA.2.R.2.2)", q: "How does Paragraph 4 (about seat belts) support the section 'Why Does the Government Make Laws?'", emoji: "💺", options: ["It gives a real example of a safety law that protects citizens", "It tells us how to build a car engine", "It explains how speed limits work", "It describes a courtroom judge"], correct: 0, para: 4, hint: "Seat belts are a law because they keep people safe!" },
+                    { category: "Relevant Details (ELA.2.R.2.2)", q: "What is the focus of Paragraph 9?", emoji: "⚖️", options: ["Going to court, judges, and juries", "Driving a school bus", "Planting trees", "Flying a smoke jumper plane"], correct: 0, para: 9, hint: "Check Paragraph 9 for courtrooms, judges, and juries." },
+                    { category: "Grammar: Collective Nouns (ELA.2.C.3.1)", q: "In our text, words like 'government', 'court', and 'jury' are examples of what kind of nouns that describe groups?", emoji: "👥", options: ["Collective nouns", "Action verbs", "Past-tense verbs", "Adjectives"], correct: 0, para: null, hint: "Collective nouns name groups of people or things!" },
+                    { category: "Central Idea Review", q: "What is a central idea in an informational text?", emoji: "⭐", options: ["The most important point the author wants you to know about the topic", "A funny joke told at the end", "The illustrator's name", "The page number"], correct: 0, para: null, hint: "Central idea = main point." },
+                    { category: "Relevant Details", q: "What are relevant details?", emoji: "🔍", options: ["Details that directly support and explain the central idea", "Random thoughts about dinosaurs", "Grocery shopping lists", "Favorite colors"], correct: 0, para: null, hint: "Relevant details tie directly into the main point." },
+                    { category: "Comprehension Check", q: "According to Paragraph 9, who is in charge in a courtroom?", emoji: "👩‍⚖️", options: ["A judge", "A police officer", "A bus driver", "A teacher"], correct: 0, para: 9, hint: "Paragraph 9: 'In a courtroom, a judge is in charge.'" },
+                    { category: "Comprehension Check", q: "What is a jury in a court case?", emoji: "👥", options: ["A group of people chosen to listen to court cases and decide if someone broke the law", "A sports team", "A band of musicians", "A cooking club"], correct: 0, para: 9, hint: "Paragraph 9 defines a jury." },
+                    { category: "Comprehension Check", q: "How many people are in many juries according to Paragraph 9?", emoji: "🔢", options: ["Twelve people", "Two people", "One hundred people", "Three people"], correct: 0, para: 9, hint: "Check Paragraph 9 for the number twelve." },
+                    { category: "Comprehension Check", q: "In Paragraph 10, what does the jury decide?", emoji: "⚖️", options: ["If the person broke the law", "What to eat for lunch", "What movie to watch", "What color car to buy"], correct: 0, para: 10, hint: "Paragraph 10: jury decides if the person broke the law." },
+                    { category: "Comprehension Check", q: "In Paragraph 10, what does the judge decide?", emoji: "🔨", options: ["What happens to the person (the consequences)", "Where to go on vacation", "What song to play", "How to build a school bus"], correct: 0, para: 10, hint: "Judge decides consequences after jury decides guilt." },
+                    { category: "Comprehension Check", q: "How does Paragraph 9 support the section 'What Happens When a Law Gets Broken?'", emoji: "🏛️", options: ["It explains the court process when someone is accused of breaking a law", "It explains how cars run", "It talks about planting flowers", "It describes highway speed limits"], correct: 0, para: 9, hint: "Courts handle broken laws." },
+                    { category: "Grammar: Collective Nouns", q: "Identify the collective noun in: 'A jury is a group of people.'", emoji: "👥", options: ["Jury", "People", "Group", "A"], correct: 0, para: 9, hint: "Jury names a collective body of people." },
+                    { category: "Grammar Review", q: "Is 'class' a collective noun?", emoji: "🏫", options: ["Yes, because it names a group of students", "No, it is a verb", "No, it is punctuation", "Only on weekends"], correct: 0, para: null, hint: "Class represents a group." },
+                    { category: "Comprehension Check", q: "What do laws help keep according to Paragraph 11?", emoji: "🛡️", options: ["People safe and order maintained", "Secrets hidden", "Toys clean", "Traffic moving fast"], correct: 0, para: 11, hint: "Paragraph 11 summary." },
+                    { category: "Review & Reflect", q: "Why do we connect paragraph focus to the central idea?", emoji: "💡", options: ["To see how every small part builds up to the big message", "To waste time", "To make reading harder", "To skip paragraphs"], correct: 0, para: null, hint: "Building blocks of comprehension." },
+                    { category: "Review & Reflect", q: "If a paragraph talks about seat belts, what section focus does it belong under?", emoji: "🚗", options: ["Why Does the Government Make Laws?", "How to Fly a Kite", "Baking Cookies", "Outer Space Exploration"], correct: 0, para: 4, hint: "Seat belts = safety laws." },
+                    { category: "Quick Check", q: "True or False: Relevant details do not matter when finding a central idea.", emoji: "⚖️", options: ["False; relevant details are essential for proving the central idea", "True; details are useless", "True; only pictures matter", "False; but only on Tuesdays"], correct: 0, para: null, hint: "Details prove the central idea." },
+                    { category: "Quick Check", q: "What does a judge know all about?", emoji: "📚", options: ["Laws", "Cooking recipes", "Video games", "Basketball plays"], correct: 0, para: 9, hint: "Paragraph 9: 'The judge knows all about laws.'" },
+                    { category: "Final Check", q: "What is the ultimate role of courts, judges, and juries?", emoji: "⚖️", options: ["To handle situations when laws get broken and ensure fairness", "To build highways", "To sell school supplies", "To write storybooks"], correct: 0, para: 9, hint: "Justice system roles." },
+                    { category: "Mastery Review", q: "How do courts help maintain order?", emoji: "🏛️", options: ["By listening to court cases and deciding consequences for breaking laws", "By planting trees", "By painting stop signs", "By driving school buses"], correct: 0, para: 9, hint: "Courtroom procedures maintain societal order." }
+                ]
+            },
+            4: {
+                dayName: "Day 4",
+                title: "Retell Using Central Idea & Details",
+                topicDesc: "Today we practice retelling an informational text in our own words using the central idea and relevant details (ELA.2.R.3.2b).",
+                badgeTitle: "Mr. Koenigsberg's Class • Unit 3 Week 2 Day 4",
+                youtubeUrl: "https://youtu.be/xcizQGHb1DI", // Day 4 Link Provided by User
+                anchorTitle: "📌 Day 4 Anchor Charts: Retelling (ELA.2.R.3.2b)[cite: 21]",
+                anchorHtml: `
+                    <div class="bg-amber-50 border-4 border-amber-400 rounded-2xl p-5 shadow-md">
+                        <h3 class="text-2xl font-black text-amber-900 mb-3">📖 Informational Retelling[cite: 21]</h3>
+                        <div class="bg-white p-3 rounded-xl border-2 border-amber-300 mb-3 text-center font-black text-amber-800 text-base">
+                            Central Idea + Relevant Details = Clear Retell[cite: 21]
+                        </div>
+                        <p class="text-base text-gray-700">When retelling informational text, focus on the central idea and the most important details in your own words—do not list every single fact![cite: 21]</p>
+                    </div>
+                    <div class="bg-blue-50 border-4 border-blue-400 rounded-2xl p-5 shadow-md">
+                        <h3 class="text-2xl font-black text-blue-900 mb-3">🗣️ Student Discourse[cite: 21]</h3>
+                        <p class="bg-white p-4 rounded-xl border-2 border-blue-200 text-blue-900 text-base">
+                            <em>"This section is mostly about ___. In my own words, the most important detail is ___."[cite: 21]</em>
+                        </p>
+                    </div>
+                `,
+                questions: [
+                    { category: "Retelling Text (ELA.2.R.3.2b)", q: "When retelling an informational text, what should you focus on?", emoji: "🗣️", options: ["The central idea and relevant details", "Only the story setting and characters", "What color clothes the people wore", "Every single minor fact in the book"], correct: 0, para: null, hint: "Informational retells focus on central ideas and key details, not characters!" },
+                    { category: "Retelling Paragraphs 7–8 (ELA.2.R.3.2b)", q: "What is the central idea of Paragraphs 7 and 8 ('What Happens When a Law Gets Broken?')?", emoji: "🚨", options: ["There are consequences when someone breaks a law, such as getting a ticket", "School buses are yellow", "Police officers like to eat lunch", "Driving fast is always allowed"], correct: 0, para: 7, hint: "Paragraphs 7 and 8 explain what happens if a driver passes a stopped school bus." },
+                    { category: "Relevant Details (ELA.2.R.3.2b)", q: "In Paragraph 8, what happens when a driver breaks the law by passing a stopped school bus?", emoji: "🎫", options: ["A police officer stops them and writes a ticket with a fine", "They get a prize", "Nothing happens", "The bus turns into an airplane"], correct: 0, para: 8, hint: "Check Paragraph 8: the officer makes the driver stop and writes a ticket." },
+                    { category: "Grammar: Commas in a Series (ELA.2.C.3.1)", q: "Which sentence uses commas correctly in a list?", emoji: "✍️", options: ["We need paper, pencils, and erasers.", "We need paper pencils and, erasers.", "We, need paper pencils erasers.", "We need, paper pencils and erasers."], correct: 0, para: null, hint: "Commas separate items in a series before the word 'and'." },
+                    { category: "Retell Comprehension", q: "When you retell a section in your own words, what should you avoid doing?", emoji: "🚫", options: ["Copying every single sentence word-for-word", "Mentioning the central idea", "Including important facts", "Keeping it brief"], correct: 0, para: null, hint: "Paraphrase in your own words rather than copying blindly." },
+                    { category: "Comprehension Check", q: "In Paragraph 7, what is cars are not allowed to pass?", emoji: "🚌", options: ["A school bus that has stopped for students", "An ice cream truck", "A bicycle", "A mail truck"], correct: 0, para: 7, hint: "Paragraph 7 specifies stopped school buses." },
+                    { category: "Comprehension Check", q: "What does the ticket in Paragraph 8 tell the driver?", emoji: "📝", options: ["Which law the driver broke and lists a fine to pay", "Where to buy ice cream", "The weather forecast", "A joke"], correct: 0, para: 8, hint: "Tickets explain broken laws and fines." },
+                    { category: "Comprehension Check", q: "Why is a retell helpful to a reader?", emoji: "🧠", options: ["It checks your understanding and summarizes the most important ideas", "It makes the book disappear", "It changes the ending", "It makes reading longer"], correct: 0, para: null, hint: "Retelling reinforces comprehension." },
+                    { category: "Grammar Review", q: "Where does the comma go in this series: 'red blue and green'?", emoji: "🎨", options: ["red, blue, and green", "red blue, and, green", "red, blue and, green", "red blue and green"], correct: 0, para: null, hint: "Commas go after each item in a list." },
+                    { category: "Grammar Review", q: "What punctuation mark separates three or more items in a series?", emoji: "🔠", options: ["Comma (,)", "Period (.)", "Question mark (?)", "Exclamation point (!)"], correct: 0, para: null, hint: "Commas separate list items." },
+                    { category: "Retell Practice", q: "If you retell Paragraphs 7–8, what key event must you include?", emoji: "🚓", options: ["A driver passes a stopped school bus and gets a ticket from a police officer", "A cat climbs a tree", "A baker makes bread", "A pilot flies a plane"], correct: 0, para: 7, hint: "School bus violation and ticket." },
+                    { category: "Comprehension Check", q: "What is a 'fine' mentioned in Paragraph 8?", emoji: "💰", options: ["Money a person may have to pay for breaking a law", "A sunny day", "A nice compliment", "A healthy snack"], correct: 0, para: 8, hint: "Fines involve monetary penalties." },
+                    { category: "Comprehension Check", q: "Who observes the driver passing the school bus in Paragraph 8?", emoji: "👮", options: ["A police officer", "A teacher", "A chef", "A firefighter"], correct: 0, para: 8, hint: "Police officers enforce traffic laws." },
+                    { category: "Retell Strategy", q: "What is the best way to start an informational retell?", emoji: "⭐", options: ["State the central idea of the section in your own words", "Start singing a song", "Describe the cover illustration", "Tell what you ate for breakfast"], correct: 0, para: null, hint: "Lead with the central idea." },
+                    { category: "Comprehension Check", q: "True or False: You should include unimportant details when retelling an informational text.", emoji: "❌", options: ["False; leave out minor details and focus on the central idea and key facts", "True; include every single word", "True; random facts are best", "False; but only on math class"], correct: 0, para: null, hint: "Keep retells concise and focused." },
+                    { category: "Grammar Practice", q: "Which sentence has correct comma placement for a series?", emoji: "✍️", options: ["I like apples, bananas, and oranges.", "I like apples bananas and, oranges.", "I, like apples bananas oranges.", "I like, apples bananas oranges."], correct: 0, para: null, hint: "Apples, bananas, and oranges." },
+                    { category: "Review & Reflect", q: "Why do we practice retelling text throughout Unit 3?", emoji: "🧠", options: ["To boost our comprehension and remember how government laws protect citizens", "To practice drawing pictures", "To run faster", "To sleep better"], correct: 0, para: null, hint: "Comprehension building." },
+                    { category: "Review & Reflect", q: "Does a retell require text evidence and details?", emoji: "📋", options: ["Yes, relevant details support your retell", "No, just guess", "Only if you want to", "Never"], correct: 0, para: null, hint: "Details anchor your retell in truth." },
+                    { category: "Quick Check", q: "What section heading covers Paragraphs 7 and 8?", emoji: "📌", options: ["What Happens When a Law Gets Broken?", "How Does the Government Keep Order?", "Why Does the Government Make Laws?", "Introduction"], correct: 0, para: 7, hint: "Check the subheadings in the text." },
+                    { category: "Quick Check", q: "What does a police officer do when witnessing a law broken on the road?", emoji: "🚨", options: ["Makes the driver stop and writes a ticket", "Waves hello and drives away", "Claps hands", "Takes a nap"], correct: 0, para: 8, hint: "Stops driver and issues ticket." },
+                    { category: "Final Mastery", q: "What makes a 100% successful retell?", emoji: "🏆", options: ["Explaining the central idea and key relevant details clearly in your own words", "Copying the glossary", "Naming the author", "Reading silently"], correct: 0, para: null, hint: "Central idea + key details in own words." }
+                ]
+            },
+            5: {
+                dayName: "Day 5",
+                title: "Compare & Contrast Two Texts",
+                topicDesc: "Today we compare and contrast important details between 'Smoke Jumpers' and 'Our Government's Laws' (ELA.2.R.3.3).",
+                badgeTitle: "Mr. Koenigsberg's Class • Unit 3 Week 2 Day 5",
+                youtubeUrl: "https://youtu.be/SBTldiZu8Sc", // Day 5 Link Provided by User
+                anchorTitle: "📌 Day 5 Anchor Charts: Compare & Contrast (ELA.2.R.3.3)[cite: 20]",
+                anchorHtml: `
+                    <div class="bg-amber-50 border-4 border-amber-400 rounded-2xl p-5 shadow-md">
+                        <h3 class="text-2xl font-black text-amber-900 mb-3">⚖️ Compare & Contrast[cite: 20]</h3>
+                        <div class="bg-white p-3 rounded-xl border-2 border-amber-300 mb-3 text-center font-black text-amber-800 text-base">
+                            Text 1 Details ➡️ Text 2 Details ➡️ Alike & Different[cite: 20]
+                        </div>
+                        <p class="text-base text-gray-700"><strong>Compare:</strong> How they are alike (both work for the government and keep people safe)[cite: 20].<br><strong>Contrast:</strong> How they are different (smoke jumpers put out fires; police officers enforce laws)[cite: 20].</p>
+                    </div>
+                    <div class="bg-blue-50 border-4 border-blue-400 rounded-2xl p-5 shadow-md">
+                        <h3 class="text-2xl font-black text-blue-900 mb-3">🗣️ Student Discourse[cite: 20]</h3>
+                        <p class="bg-white p-4 rounded-xl border-2 border-blue-200 text-blue-900 text-base">
+                            <em>"Both smoke jumpers and police officers ___. However, smoke jumpers ___, while police officers ___."[cite: 20]</em>
+                        </p>
+                    </div>
+                `,
+                questions: [
+                    { category: "Compare and Contrast (ELA.2.R.3.3)", q: "How are smoke jumpers ('Smoke Jumpers') and police officers ('Our Government's Laws') SIMILAR?", emoji: "🤝", options: ["They both work for the government and help keep people safe", "They both parachute from airplanes every day", "They both wear firefighter helmets with visors", "They both issue speeding tickets on highways"], correct: 0, para: null, hint: "Remember our comparison: both serve the government and protect citizens!" },
+                    { category: "Compare and Contrast (ELA.2.R.3.3)", q: "How are smoke jumpers and police officers DIFFERENT in their jobs?", emoji: "🪂", options: ["Smoke jumpers fight forest fires, while police officers make sure people follow laws", "Police officers fly airplanes, while smoke jumpers drive police cars", "Smoke jumpers work in courts with judges", "Police officers wear parachutes"], correct: 0, para: null, hint: "Think about what each worker actually does in their daily profession." },
+                    { category: "Grammar: Commas in a Series (ELA.2.C.3.1)", q: "Which sentence uses commas in a series correctly?", emoji: "🔠", options: ["Federal, state, and local governments all pass laws.", "Federal state and local, governments all pass laws.", "Federal, state and local governments, all pass laws.", "Federal state local governments all pass, laws."], correct: 0, para: null, hint: "Commas separate items in a list of three or more!" },
+                    { category: "Compare and Contrast (ELA.2.R.3.3)", q: "What does 'compare' mean when reading two texts?", emoji: "⚖️", options: ["To find out how two things are alike", "To find out how two things are different", "To throw the books away", "To color the pages"], correct: 0, para: null, hint: "Compare = find similarities." },
+                    { category: "Compare and Contrast (ELA.2.R.3.3)", q: "What does 'contrast' mean when reading two texts?", emoji: "🔍", options: ["To find out how two things are different", "To find out how two things are alike", "To read upside down", "To count the words"], correct: 0, para: null, hint: "Contrast = find differences." },
+                    { category: "Comprehension Check ('Smoke Jumpers')", q: "Where do smoke jumpers work?", emoji: "🌲", options: ["In rough terrain like mountains fighting forest fires", "Inside a courtroom with a judge", "At a local grocery store", "Inside an office building"], correct: 0, para: null, hint: "Smoke jumpers parachute into rough forest terrain." },
+                    { category: "Comprehension Check ('Our Gov Laws')", q: "Where do police officers work?", emoji: "🚓", options: ["For local, state, or federal government making sure people follow laws", "Only in airplane parachutes", "Only on top of mountains", "Only in art museums"], correct: 0, para: 6, hint: "Police enforce community and government laws." },
+                    { category: "Comprehension Check", q: "What equipment do smoke jumpers use?", emoji: "🪂", options: ["Parachutes, helmets with face masks, and padded fireproof suits", "Badges, tickets, and patrol cars", "Judges' robes and gavels", "School bus stop signs"], correct: 0, para: null, hint: "Smoke jumpers use parachutes and fire gear." },
+                    { category: "Comprehension Check", q: "What tools do police officers use in 'Our Government's Laws'?", emoji: "🎫", options: ["Patrol cars, tickets, and badges", "Parachutes and chainsaws", "Only fire hoses", "Only airplanes"], correct: 0, para: 8, hint: "Police write tickets and patrol." },
+                    { category: "Grammar Practice", q: "Add commas correctly: 'police officers judges and juries'", emoji: "✍️", options: ["police officers, judges, and juries", "police officers judges, and, juries", "police, officers, judges juries", "police officers judges and, juries"], correct: 0, para: null, hint: "Items in a series take commas." },
+                    { category: "Comprehension Check", q: "True or False: Both smoke jumpers and police officers serve the public/government.", emoji: "⭐", options: ["True; both have important government jobs protecting people", "False; neither works for government", "True, but only police officers fight fires", "False; only smoke jumpers exist"], correct: 0, para: null, hint: "Both are public servants." },
+                    { category: "Venn Diagram Skills", q: "In a Venn diagram comparing smoke jumpers and police officers, where does 'working for the government' go?", emoji: "📊", options: ["In the middle where the circles overlap (alike)", "On the far left only", "On the far right only", "Outside the circles"], correct: 0, para: null, hint: "Shared traits go in the overlap middle!" },
+                    { category: "Venn Diagram Skills", q: "Where does 'using parachutes to jump into forest fires' go in the Venn diagram?", emoji: "🌲", options: ["In the smoke jumper circle only (different)", "In the middle overlap", "In the police circle only", "Nowhere"], correct: 0, para: null, hint: "Unique traits go in the individual circles." },
+                    { category: "Grammar Review", q: "Which sentence uses commas correctly in a list of three government levels?", emoji: "🇺🇸", options: ["Federal, state, and local governments make laws.", "Federal state, and, local governments make laws.", "Federal state local, governments, make laws.", "Federal, state local governments make, laws."], correct: 0, para: null, hint: "Federal, state, and local." },
+                    { category: "Review & Reflect", q: "Why do we compare information across two texts on the same topic?", emoji: "🧠", options: ["To deepen our knowledge and see how different community workers help our country", "To make reading take longer", "To memorize page numbers", "To test our eyesight"], correct: 0, para: null, hint: "Cross-text comparison builds deep understanding." },
+                    { category: "Review & Reflect", q: "What text evidence supports the idea that both workers keep people safe?", emoji: "🛡️", options: ["Smoke jumpers put out dangerous fires; police officers ensure laws are followed to protect citizens", "They both wear red shirts", "They both eat pizza", "They both sleep all day"], correct: 0, para: null, hint: "Safety connection." },
+                    { category: "Quick Check", q: "What is the primary difference between their training/tools?", emoji: "🛠️", options: ["Smoke jumpers train to parachute into forest fires; police officers train to enforce laws and traffic rules", "They have identical jobs", "Police officers jump out of planes", "Smoke jumpers write traffic tickets"], correct: 0, para: null, hint: "Fires vs laws." },
+                    { category: "Quick Check", q: "True or False: Comparing and contrasting requires evidence from both texts.", emoji: "📋", options: ["True; you must cite details from both reading selections", "False; guess based on memory", "False; only read one text", "True, but only on Fridays"], correct: 0, para: null, hint: "Both texts required." },
+                    { category: "Grammar Mastery", q: "Identify the commas needed in: 'firefighters police officers and judges'", emoji: "⚖️", options: ["firefighters, police officers, and judges", "firefighters police, officers, and judges", "firefighters, police officers and judges", "firefighters police officers and, judges"], correct: 0, para: null, hint: "Series punctuation rule." },
+                    { category: "Final Mastery", q: "What is the ultimate theme connecting Unit 3 Week 2's reading selections?", emoji: "🏆", options: ["Government at Work: How public servants protect our communities and maintain order", "How to bake bread", "Outer space travel", "Ocean animals"], correct: 0, para: null, hint: "Unit 3 theme: Government at Work!" }
+                ]
+            }
+        };
+
+        let currentDay = 1;
+        let currentQ = 0;
+        let score = 0;
+        let isMusicPlaying = false;
+        let timerInterval = null, paraTimerInterval = null, audioContextStarted = false;
+        let drum, bass, melodySynth, cheerSynth, buzzSynth, loopParts = [];
+
+        function setDayAndStart(dayNum) {
+            currentDay = dayNum;
+            updateDayUI();
+        }
+
+        function switchDayTab(dayNum) {
+            currentDay = dayNum;
+            currentQ = 0;
+            score = 0;
+            document.getElementById("score-display").innerText = "⭐ 0";
+            updateDayUI();
+            loadQuestion();
+        }
+
+        function updateDayUI() {
+            const data = lessonData[currentDay];
+            
+            document.getElementById("lesson-header-title").innerText = `🧠 Pre-Game Mini Lesson: ${data.dayName}`;
+            document.getElementById("lesson-topic-title").innerText = `🏛️ ${data.title}`;
+            document.getElementById("lesson-topic-desc").innerText = data.topicDesc;
+            document.getElementById("lesson-youtube-link").href = data.youtubeUrl;
+            
+            document.getElementById("game-banner-day").innerText = data.badgeTitle;
+            document.getElementById("game-banner-title").innerText = data.title;
+
+            document.getElementById("anchor-modal-title").innerText = data.anchorTitle;
+            document.getElementById("anchor-modal-content").innerHTML = data.anchorHtml;
+
+            for(let i=1; i<=5; i++) {
+                const tab1 = document.getElementById(`tab-btn-${i}`);
+                const tab2 = document.getElementById(`game-tab-btn-${i}`);
+                if(tab1) tab1.classList.toggle("active-day", i === currentDay);
+                if(tab2) tab2.classList.toggle("active-day", i === currentDay);
+            }
+        }
+
+        async function setupAudio() {
+            if (audioContextStarted) return;
+            await Tone.start();
+            Tone.Transport.bpm.value = 115;
+            drum = new Tone.MembraneSynth().toDestination(); drum.volume.value = -8;
+            bass = new Tone.Synth({ oscillator: { type: "triangle" } }).toDestination(); bass.volume.value = -10;
+            melodySynth = new Tone.Synth({ oscillator: { type: "square" } }).toDestination(); melodySynth.volume.value = -15;
+            loopParts = [
+                new Tone.Sequence((time, note) => { drum.triggerAttackRelease(note, "8n", time); }, ["C1", null, "C1", null], "4n"),
+                new Tone.Sequence((time, note) => { bass.triggerAttackRelease(note, "8n", time); }, ["C2", "G2", "C2", "F2"], "4n"),
+                new Tone.Sequence((time, note) => { if(note) melodySynth.triggerAttackRelease(note, "8n", time); }, ["C4", "E4", "G4", "C5", "A4", "G4", "E4", "C4"], "4n")
+            ];
+            cheerSynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "square" }, envelope: { attack: 0.02, decay: 0.15, sustain: 0.4, release: 1.2 } }).toDestination(); cheerSynth.volume.value = -8;
+            buzzSynth = new Tone.Synth({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.05, decay: 0.25, sustain: 0.4, release: 0.6 } }).toDestination(); buzzSynth.volume.value = -6;
+            audioContextStarted = true;
+        }
+
+        async function startLesson() {
+            await setupAudio();
+            document.getElementById("start-screen").classList.add("hidden");
+            document.getElementById("lesson-ui").classList.remove("hidden");
+            Tone.Transport.start(); loopParts.forEach(p => p.start(0)); isMusicPlaying = true;
+        }
+
+        function startParaTimer() {
+            document.getElementById("startParaBtn").disabled = true;
+            document.getElementById("startParaBtn").classList.add("opacity-50", "cursor-not-allowed");
+            document.getElementById("skipParaBtn").classList.remove("hidden");
+            
+            let timeLeft = 60;
+            const display = document.getElementById("para-timer-display");
+            display.innerText = timeLeft;
+
+            paraTimerInterval = setInterval(() => {
+                timeLeft--; display.innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(paraTimerInterval);
+                    unlockGame();
+                }
+            }, 1000);
+        }
+
+        function skipParaTimer() {
+            clearInterval(paraTimerInterval);
+            document.getElementById("para-timer-display").innerText = "0";
+            unlockGame();
+        }
+
+        function unlockGame() {
+            document.getElementById("skipParaBtn").classList.add("hidden");
+            const btn = document.getElementById("continueBtn");
+            btn.disabled = false; btn.innerText = "▶️ Start Game!";
+            btn.classList.replace("bg-gray-400", "bg-green-500"); btn.classList.replace("border-gray-600", "border-green-700");
+            btn.classList.replace("cursor-not-allowed", "hover:bg-green-400"); btn.classList.add("hover:scale-105", "shadow-lg");
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } }); playCheer();
+        }
+
+        function startGameMode() {
+            document.getElementById("lesson-ui").classList.add("hidden");
+            document.getElementById("game-ui").classList.remove("hidden");
+            loadQuestion();
+        }
+
+        function toggleMusic() {
+            if (isMusicPlaying) {
+                Tone.Transport.stop(); loopParts.forEach(p => p.stop());
+                document.getElementById("musicBtnGame").innerText = "🎵 Music: OFF"; document.getElementById("musicBtnGame").classList.replace("bg-green-500", "bg-orange-500"); document.getElementById("musicBtnGame").classList.replace("border-green-800", "border-orange-800");
+                document.getElementById("musicBtnLesson").innerText = "🎵 Music: OFF"; document.getElementById("musicBtnLesson").classList.replace("bg-green-500", "bg-orange-500"); document.getElementById("musicBtnLesson").classList.replace("border-green-700", "border-orange-700");
+                isMusicPlaying = false;
+            } else {
+                Tone.Transport.start(); loopParts.forEach(p => p.start(0));
+                document.getElementById("musicBtnGame").innerText = "🎵 Music: ON"; document.getElementById("musicBtnGame").classList.replace("bg-orange-500", "bg-green-500"); document.getElementById("musicBtnGame").classList.replace("border-orange-800", "border-green-800");
+                document.getElementById("musicBtnLesson").innerText = "🎵 Music: ON"; document.getElementById("musicBtnLesson").classList.replace("bg-orange-500", "bg-green-500"); document.getElementById("musicBtnLesson").classList.replace("border-orange-700", "border-green-700");
+                isMusicPlaying = true;
+            }
+        }
+
+        function playCheer() { const now = Tone.now(); cheerSynth.triggerAttackRelease(["C5", "E5", "G5"], "8n", now); cheerSynth.triggerAttackRelease(["E5", "G5", "C6"], "8n", now + 0.15); cheerSynth.triggerAttackRelease(["G5", "C6", "E6"], "2n", now + 0.3); }
+        function playBuzz() { const now = Tone.now(); buzzSynth.triggerAttackRelease("Eb2", "8n", now); buzzSynth.triggerAttackRelease("D2", "4n", now + 0.18); }
+
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex); currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        function loadQuestion() {
+            clearInterval(timerInterval);
+            const qList = lessonData[currentDay].questions;
+            const qData = qList[currentQ];
+            
+            document.getElementById("q-counter").innerText = `Question ${currentQ + 1} of ${qList.length}`;
+            document.getElementById("q-category").innerText = qData.category;
+            
+            let qHtml = qData.q;
+            if (qData.emoji) {
+                qHtml += `<div class="text-6xl md:text-8xl mt-3 drop-shadow-xl">${qData.emoji}</div>`;
+            }
+            document.getElementById("question-text").innerHTML = qHtml;
+            document.getElementById("prevBtn").disabled = (currentQ === 0);
+            
+            const grid = document.getElementById("answers-grid"); grid.innerHTML = "";
+
+            let buttonsDisabled = false;
+            const timerBanner = document.getElementById("timer-banner");
+
+            if (qData.para) {
+                document.getElementById("target-para-num").innerText = `Paragraph ${qData.para}`;
+                timerBanner.classList.add("active");
+                startTimer(10);
+                buttonsDisabled = true; 
+            } else { 
+                timerBanner.classList.remove("active"); 
+            }
+
+            const colors = [
+                {bg: 'bg-blue-600', border: 'border-blue-800', hover: 'hover:bg-blue-500', label: 'A'}, 
+                {bg: 'bg-emerald-600', border: 'border-emerald-800', hover: 'hover:bg-emerald-500', label: 'B'},
+                {bg: 'bg-purple-600', border: 'border-purple-800', hover: 'hover:bg-purple-500', label: 'C'}, 
+                {bg: 'bg-amber-500', border: 'border-amber-700', hover: 'hover:bg-amber-400', label: 'D'}
+            ];
+
+            const originalOptions = [...qData.options];
+            const correctText = originalOptions[qData.correct];
+            const shuffledOptions = shuffle([...originalOptions]);
+            const newCorrectIndex = shuffledOptions.indexOf(correctText);
+
+            shuffledOptions.forEach((opt, index) => {
+                const btn = document.createElement("button");
+                const color = colors[index % colors.length];
+                btn.className = `btn-answer ${color.bg} text-white text-xl md:text-2xl font-black p-4 rounded-2xl ${color.border} ${color.hover} shadow-lg answer-btn-class flex items-center gap-4 text-left leading-snug min-h-[85px] z-30 relative`;
+                
+                btn.innerHTML = `<span class="bg-white/25 text-white w-11 h-11 rounded-xl flex items-center justify-center text-2xl font-black shrink-0 border-2 border-white/40">${color.label}</span><span class="flex-grow">${opt}</span>`;
+                btn.disabled = buttonsDisabled;
+                btn.onclick = () => checkAnswer(index, newCorrectIndex, btn);
+                grid.appendChild(btn);
+            });
+        }
+
+        function startTimer(seconds) {
+            let timeLeft = seconds;
+            const display = document.getElementById("timer-display");
+            display.innerText = timeLeft;
+
+            timerInterval = setInterval(() => {
+                timeLeft--; display.innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById("timer-banner").classList.remove("active");
+                    document.querySelectorAll(".answer-btn-class").forEach(btn => btn.disabled = false);
+                }
+            }, 1000);
+        }
+
+        function checkAnswer(selectedIndex, actualCorrectIndex, btnElement) {
+            clearInterval(timerInterval);
+            document.getElementById("timer-banner").classList.remove("active");
+
+            const qList = lessonData[currentDay].questions;
+            const qData = qList[currentQ];
+            document.querySelectorAll(".btn-answer").forEach(b => b.disabled = true);
+
+            if (selectedIndex === actualCorrectIndex) {
+                score++; document.getElementById("score-display").innerText = `⭐ ${score}`;
+                btnElement.className = "btn-answer bg-green-500 text-white text-xl md:text-2xl font-black p-4 rounded-2xl border-green-700 shadow-xl flex items-center gap-4 text-left leading-snug min-h-[85px] ring-4 ring-yellow-300 scale-[1.02] z-30 relative";
+                playCheer();
+                
+                const end = Date.now() + 2000;
+                (function frame() {
+                    confetti({ particleCount: 6, angle: 60, spread: 55, origin: { x: 0, y: 0.65 }, colors: ['#ef4444', '#ffffff', '#3b82f6', '#facc15'] });
+                    confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1, y: 0.65 }, colors: ['#ef4444', '#ffffff', '#3b82f6', '#facc15'] });
+                    if (Date.now() < end) { requestAnimationFrame(frame); }
+                }());
+                setTimeout(nextQuestion, 2700);
+            } else {
+                btnElement.classList.replace("bg-blue-600", "bg-red-600"); btnElement.classList.replace("bg-emerald-600", "bg-red-600"); btnElement.classList.replace("bg-purple-600", "bg-red-600"); btnElement.classList.replace("bg-amber-500", "bg-red-600");
+                btnElement.classList.add("opacity-90");
+                playBuzz();
+                document.getElementById("hint-text").innerHTML = `<strong>💡 Hint:</strong> ${qData.hint}`;
+                document.getElementById("hintModal").classList.add("active");
+            }
+        }
+
+        function closeHint() {
+            document.getElementById("hintModal").classList.remove("active");
+            document.querySelectorAll(".btn-answer").forEach(b => {
+                if (!b.classList.contains("bg-red-600")) b.disabled = false;
+            });
+        }
+
+        function nextQuestion() {
+            const qList = lessonData[currentDay].questions;
+            if (currentQ < qList.length - 1) { 
+                currentQ++; 
+                loadQuestion(); 
+            } else {
+                document.getElementById("timer-banner").classList.remove("active");
+                document.getElementById("question-container").innerHTML = `<h2 class="text-2xl md:text-4xl font-black text-gray-800 text-center leading-snug mb-3">🎉 FANTASTIC! 🎉<br><span class="text-2xl md:text-3xl text-blue-800 block mt-3">You completed ${lessonData[currentDay].dayName} Review!</span></h2>`;
+                document.getElementById("answers-grid").innerHTML = `<div class="md:col-span-2 flex flex-col items-center justify-center p-6 bg-yellow-50 border-4 border-yellow-400 rounded-3xl shadow-inner z-30 relative"><div class="text-6xl mb-3">🏛️📜⭐🏆</div><button onclick="switchDayTab(currentDay === 5 ? 1 : currentDay + 1)" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-2xl border-b-4 border-blue-900 hover:bg-blue-500 shadow-xl transition-transform hover:scale-105">➡️ Go To Next Day!</button></div>`;
+                document.getElementById("q-counter").innerText = `🏁 ${lessonData[currentDay].dayName} COMPLETE!`;
+                confetti({ particleCount: 400, spread: 180, origin: { y: 0.4 }, zIndex: 100 }); playCheer();
+            }
+        }
+
+        function prevQuestion() { if (currentQ > 0) { currentQ--; loadQuestion(); } }
+        function toggleModal(id) { document.getElementById(id).classList.toggle("active"); }
+        function openStoryModal() { toggleModal('storyModal'); }
+
+        updateDayUI();
+    </script>
+</body>
+</html>
